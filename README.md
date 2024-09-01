@@ -1,7 +1,7 @@
 # kaillera-lag-simulator
 
 
-All of the code is in [Main.kt](src/main/java/com/hopskipnfall/Main.kt).
+All of the code is [here](src/main/java/com/hopskipnfall).
 
 To run the code, run:
 
