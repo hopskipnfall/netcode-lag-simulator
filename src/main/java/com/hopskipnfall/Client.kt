@@ -28,10 +28,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
       // This is the first loop!
 
       if (lastFrameDataFrameNumberSent == null && frameNumber >= firstFrameToSendFrom) {
-        val outPacket = buildPacketToServer()
-        server.incomingPackets += outPacket
-        lastFrameDataFrameNumberSent = outPacket.frameData.single().frameNumber
-        log("FIRST FRAME EVER OUT PACKET $outPacket", debug = true)
+        sendPacketToServer()
       }
     }
 
@@ -83,10 +80,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
         frameNumber >= firstFrameToSendFrom &&
           (lastFrameNumberSent == null || lastFrameNumberSent < frameNumber + frameDelay)
       ) {
-        val outPacket = buildPacketToServer()
-        server.incomingPackets += outPacket
-        lastFrameDataFrameNumberSent = outPacket.frameData.single().frameNumber
-        log("SENDING OUT PACKET $outPacket", debug = true)
+        sendPacketToServer()
       }
     }
   }
@@ -94,11 +88,16 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
   val isHealthy: Boolean
     get() = now - newFrameTimestamp < singleFrameDuration * 10
 
-  private fun buildPacketToServer(frameNo: Long = frameNumber) =
-    DelayedPacket(
-      arrivalTime = now + randomDuration(pingRange / 2),
-      listOf(FrameData(frameNo + frameDelay, fromClientId = id))
-    )
+  private fun sendPacketToServer() {
+    val packet =
+      DelayedPacket(
+        arrivalTime = now + randomDuration(pingRange / 2),
+        listOf(FrameData(frameNumber + frameDelay, fromClientId = id))
+      )
+    server.incomingPackets += packet
+    lastFrameDataFrameNumberSent = packet.frameData.single().frameNumber
+    log("Sending to server: $packet", debug = true)
+  }
 
   private fun log(s: String, debug: Boolean = false) {
     logWithTime("Client $id (frame $frameNumber): $s", debug)

@@ -67,8 +67,6 @@ data class Server(val clients: List<Client>) {
             client.serverData.lagLeeway += leewayChange
             if (client.serverData.lagLeeway < Duration.ZERO) {
               // Lag leeway fell below zero. We caused lag!
-              log("THERE WAS LAG ----- ${client.id}: $leewayChange", debug = true)
-
               client.serverData.totalDrift += leewayChange
               client.serverData.lagLeeway = Duration.ZERO
             }
