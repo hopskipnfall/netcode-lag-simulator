@@ -52,10 +52,7 @@ data class Server(val clients: List<Client>) {
         log("Received data for all clients on frame $frameNumber. fanning out.", debug = true)
         clients.forEach { client ->
           client.incomingPackets +=
-            DelayedPacket(
-              arrivalTime = now + randomDuration(client.pingRange / 2),
-              frameData = heldData
-            )
+            DelayedPacket(arrivalTime = now + (client.pingRange.random() / 2), frameData = heldData)
 
           if (lastFanOutTime != null) {
             // Calculate lag.
@@ -71,6 +68,11 @@ data class Server(val clients: List<Client>) {
               client.serverData.lagLeeway = Duration.ZERO
             }
           }
+          frameDriftLogger.log(
+            now,
+            "Client" to "Client ${client.id}",
+            "Induced gameplay drift" to client.serverData.totalDrift.inWholeMicroseconds / 1_000.0
+          )
         }
         lastFanOutTime = now
         sentDataForFrames.add(frameNumber)

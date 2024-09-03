@@ -10,7 +10,11 @@ repositories {
   mavenCentral()
 }
 
-dependencies { api("org.jetbrains.kotlin:kotlin-stdlib:2.0.20") }
+dependencies {
+  api("org.jetbrains.kotlin:kotlin-stdlib:2.0.20")
+
+  implementation("org.jetbrains.kotlinx:kandy-lets-plot:0.7.0")
+}
 
 group = "com.hopskipnfall"
 

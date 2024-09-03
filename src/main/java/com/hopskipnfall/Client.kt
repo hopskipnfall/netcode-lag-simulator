@@ -3,9 +3,8 @@ package com.hopskipnfall
 import kotlin.math.max
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
-class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Duration>) {
+class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
   lateinit var server: Server
   lateinit var siblings: List<Client>
 
@@ -24,6 +23,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
   private var lastFrameDataFrameNumberSent: Long? = null
 
   fun run() {
+    frameNumberLogger.log(now, "Frame Number" to frameNumber, "Client" to "Client $id")
     if (now == newFrameTimestamp) {
       // This is the first loop!
 
@@ -72,6 +72,8 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
           else if (lag > 5.milliseconds) clientPerceivedLag.lagSpikesOver5Ms++
         }
         newFrameTimestamp = now
+      } else {
+        // The frame is lagged!
       }
 
       // Do we need to send new data?
@@ -91,7 +93,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
   private fun sendPacketToServer() {
     val packet =
       DelayedPacket(
-        arrivalTime = now + randomDuration(pingRange / 2),
+        arrivalTime = now + (pingRange.random() / 2),
         listOf(FrameData(frameNumber + frameDelay, fromClientId = id))
       )
     server.incomingPackets += packet
@@ -116,8 +118,8 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: ClosedRange<Durati
   /** Data the server tracks about the client. */
   data class ServerData(
     var lagLeeway: Duration = singleFrameDuration,
-    var totalDrift: Duration = 0.seconds,
-    var receivedDataAt: Duration = 0.seconds,
+    var totalDrift: Duration = Duration.ZERO,
+    var receivedDataAt: Duration = Duration.ZERO,
   )
 
   val serverData = ServerData()
