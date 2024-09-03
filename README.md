@@ -1,5 +1,4 @@
-# kaillera-lag-simulator
-
+# netcode-lag-simulator
 
 All of the code is [here](src/main/java/com/hopskipnfall).
 
