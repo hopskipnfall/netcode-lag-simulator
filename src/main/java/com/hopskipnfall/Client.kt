@@ -1,6 +1,8 @@
 package com.hopskipnfall
 
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -22,8 +24,23 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
 
   private var lastFrameDataFrameNumberSent: Long? = null
 
+  private var init = true
+
+  private var timeReceivedDataNecessaryForNextFrame: Duration? = null
+
   fun run() {
-    frameNumberLogger.log(now, "Frame Number" to frameNumber, "Client" to "Client $id")
+    // This block ensures that all of the clients are synchronized with respect to the server.
+    // Different frame differences require different respective start times.
+    val minFrameDelay = min(frameDelay, siblings.minOf { it.frameDelay })
+    val waitForFrames: Double = max((frameDelay - minFrameDelay).toDouble(), 0.0) / 2.0
+    if (now < singleFrameDuration * waitForFrames) {
+      return
+    } else if (init) {
+      newFrameTimestamp = now
+      init = false
+    }
+
+    frameNumberLogger.addRow(now, "Frame Number" to frameNumber, "Client" to "Client $id")
     if (now == newFrameTimestamp) {
       // This is the first loop!
 
@@ -52,6 +69,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
             arrivedPackets.size == 1
           ) // THIS MIGHT NOT ACTUALLY BE IMPOSSIBLE FOR IT TO BE GREATER THAN 1
           frameDataRequirementSatisfied = true
+          timeReceivedDataNecessaryForNextFrame = now
           log("Received packet: ${arrivedPackets.single()}.", debug = true)
         }
       } else {
@@ -61,6 +79,25 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
       if (frameDataRequirementSatisfied) {
         log("moving to next frame", debug = true)
         frameNumber++
+        diagramBuilder.registerNewFrame(now, client = id, frameNumber)
+        if (timeReceivedDataNecessaryForNextFrame != null) {
+          objectiveLagLogger.addRow(
+            now,
+            "Frame Number" to frameNumber,
+            "Client" to "Client $id",
+            "Lag" to
+              max(
+                  ((now - newFrameTimestamp) -
+                      (now - timeReceivedDataNecessaryForNextFrame!!) -
+                      singleFrameDuration)
+                    .toMillisDouble(),
+                  0.0
+                )
+                .roundToInt()
+          )
+        }
+
+        timeReceivedDataNecessaryForNextFrame = null
         val lag = now - (newFrameTimestamp) - singleFrameDuration
         if (lag <= timeStep) {
           // No lag.
@@ -96,6 +133,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
         arrivalTime = now + (pingRange.random() / 2),
         listOf(FrameData(frameNumber + frameDelay, fromClientId = id))
       )
+    diagramBuilder.registerPacketToServer(now, client = id, packet)
     server.incomingPackets += packet
     lastFrameDataFrameNumberSent = packet.frameData.single().frameNumber
     log("Sending to server: $packet", debug = true)

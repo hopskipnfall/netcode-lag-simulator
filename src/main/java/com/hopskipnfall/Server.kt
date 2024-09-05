@@ -2,6 +2,9 @@ package com.hopskipnfall
 
 import kotlin.time.Duration
 
+private var gameLagLeeway = Duration.ZERO
+private var gameDrift = Duration.ZERO
+
 data class Server(val clients: List<Client>) {
   private val clientIds: Set<Int> = clients.map { it.id }.toSet()
 
@@ -51,15 +54,17 @@ data class Server(val clients: List<Client>) {
 
         log("Received data for all clients on frame $frameNumber. fanning out.", debug = true)
         clients.forEach { client ->
-          client.incomingPackets +=
+          val packet =
             DelayedPacket(arrivalTime = now + (client.pingRange.random() / 2), frameData = heldData)
+          client.incomingPackets += packet
+
+          diagramBuilder.registerPacketToClient(now, client = client.id, packet)
 
           if (lastFanOutTime != null) {
             // Calculate lag.
             val elapsedSinceReceivingFrameData = now - client.serverData.receivedDataAt
             val delaySinceLastFanOutMinusWaiting =
               now - lastFanOutTime!! - elapsedSinceReceivingFrameData
-
             val leewayChange = singleFrameDuration - delaySinceLastFanOutMinusWaiting
             client.serverData.lagLeeway += leewayChange
             if (client.serverData.lagLeeway < Duration.ZERO) {
@@ -68,14 +73,37 @@ data class Server(val clients: List<Client>) {
               client.serverData.lagLeeway = Duration.ZERO
             }
           }
-          frameDriftLogger.log(
+          diagramBuilder.registerServerWait(
+            client.serverData.receivedDataAt,
+            client = client.id,
+            now,
+            frameNumber = packet.frameData.first().frameNumber,
+          )
+          frameDriftLogger.addRow(
             now,
             "Client" to "Client ${client.id}",
-            "Induced gameplay drift" to client.serverData.totalDrift.inWholeMicroseconds / 1_000.0
+            "Induced gameplay drift" to client.serverData.totalDrift.toMillisDouble(),
           )
         }
+        if (lastFanOutTime != null) {
+          // Calculate lag. (V2 leeway)
+          val gameLeewayChange = singleFrameDuration - (now - lastFanOutTime!!)
+          gameLagLeeway += gameLeewayChange
+          if (gameLagLeeway < Duration.ZERO) {
+            //           Lag leeway fell below zero. We caused lag!
+            gameDrift += gameLeewayChange
+            gameLagLeeway = Duration.ZERO
+          }
+        }
+
         lastFanOutTime = now
         sentDataForFrames.add(frameNumber)
+
+        frameDriftLogger.addRow(
+          now,
+          "Client" to "Overall",
+          "Induced gameplay drift" to gameDrift.toMillisDouble(),
+        )
       }
     }
     waitingPacketData.removeAll { it.frameNumber in sentDataForFrames }

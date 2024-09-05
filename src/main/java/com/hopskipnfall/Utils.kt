@@ -1,81 +1,64 @@
 package com.hopskipnfall
 
+import kotlin.math.*
 import kotlin.random.Random
+import kotlin.random.asJavaRandom
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.DurationUnit
-import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
-
-class TimeBasedDataLogger(
-  private val timestampTransformer: (Duration) -> Double,
-  private val timeName: String = "Timstamp (ms)",
-  private val precision: Duration = Duration.ZERO
-) {
-  private val times = mutableListOf<Double>()
-  private val data = mutableMapOf<String, MutableList<Any>>()
-
-  private var lastTime: Duration? = null
-
-  fun log(time: Duration, vararg columnToValues: Pair<String, Any>) {
-    columnToValues.forEach { (colName, _) ->
-      if (data[colName] == null) data[colName] = mutableListOf()
-    }
-
-    if (
-      lastTime == time &&
-        columnToValues.all { (colName, _) ->
-          data[colName]?.let { it.size == times.size - 1 } == true
-        }
-    ) {
-      // This is more data for the same time step. Don't add a new time.
-    } else {
-      lastTime?.let { if (time - it < precision) return }
-      times.add(timestampTransformer(time))
-    }
-
-    lastTime = time
-
-    for ((column: String, value) in columnToValues) {
-      var columnData = data[column]
-      if (columnData == null) {
-        columnData = mutableListOf()
-        data[column] = columnData
-      }
-      columnData.add(value)
-    }
-  }
-
-  fun buildDataFrame() =
-    dataFrameOf(
-      timeName to times,
-      *(data.map { (columnName, values) -> columnName to values }.toTypedArray())
-    )
-}
 
 interface Distribution {
-  fun random(): Duration
+  fun random(random: Random = Random.Default): Duration
+}
+
+fun Duration.toMillisDouble(): Double =
+  this.inWholeNanoseconds / 1.milliseconds.inWholeNanoseconds.toDouble()
+
+data class LognormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
+
+  override fun random(random: Random): Duration {
+    val mean = mean.toMillisDouble()
+    val stdev = stdev.toMillisDouble()
+
+    val variance = stdev * stdev
+    val sigmaSquared = ln((variance / (mean * mean)) + 1)
+    val mu = ln(mean) - 0.5 * sigmaSquared
+    val sigma = sqrt(sigmaSquared)
+
+    fun generateNormal(mu: Double, sigma: Double): Double {
+      val u1 = random.nextDouble()
+      val u2 = random.nextDouble()
+      val z = sqrt(-2 * ln(u1)) * cos(2 * PI * u2)
+      return mu + sigma * z
+    }
+
+    val normalRandomNumber = generateNormal(mu, sigma)
+    val lognormalRandomNumber = exp(normalRandomNumber)
+    return lognormalRandomNumber.milliseconds
+  }
 }
 
 data class NormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
-  override fun random(): Duration =
+  override fun random(random: Random): Duration =
     maxOf(
-      java.util
-        .Random()
-        .nextGaussian(
-          /* mean= */ mean.inWholeNanoseconds.toDouble(),
-          /* stddev= */ stdev.inWholeNanoseconds.toDouble()
-        )
-        .nanoseconds,
+      random
+        .asJavaRandom()
+        .nextGaussian(/* mean= */ mean.toMillisDouble(), /* stddev= */ stdev.toMillisDouble())
+        .milliseconds,
       Duration.ZERO
     )
+
+  fun toLogNormal(): LognormalDistribution = LognormalDistribution(mean, stdev)
 }
 
 data class EqualDistribution(val range: ClosedRange<Duration>) : Distribution {
-  override fun random(): Duration =
+  override fun random(random: Random): Duration =
     if (range.start == range.endInclusive) {
       range.start
     } else {
-      Random.nextLong(range.start.inWholeNanoseconds, range.endInclusive.inWholeNanoseconds)
+      random
+        .nextLong(range.start.inWholeNanoseconds, range.endInclusive.inWholeNanoseconds)
         .nanoseconds
     }
 }

@@ -42,3 +42,6 @@ bin/
 .DS_Store
 
 lets-plot-images/
+
+*.svg
+.idea/uiDesigner.xml
