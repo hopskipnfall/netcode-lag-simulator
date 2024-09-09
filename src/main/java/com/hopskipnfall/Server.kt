@@ -1,8 +1,10 @@
 package com.hopskipnfall
 
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.DurationUnit
 
-private var gameLagLeeway = Duration.ZERO
 private var gameDrift = Duration.ZERO
 
 data class Server(val clients: List<Client>) {
@@ -31,20 +33,6 @@ data class Server(val clients: List<Client>) {
       client.serverData.receivedDataAt = now
     }
 
-    //    waitingPacketData
-    //      .groupBy { it.fromClientId }
-    //      .forEach { (fromClient, frameDataList) ->
-    //        check(
-    //          frameDataList
-    //            .filter { it.frameNumber > clients.first { it.id == fromClient }.frameDelay }
-    //            .size <= 1
-    //        ) {
-    //          // NOT EXACTLY TRUE i think.
-    //          "CLIENT $fromClient: I think it's impossible for the server to have multiple sets of
-    // user data..? $frameDataList"
-    //        }
-    //      }
-
     val sentDataForFrames = mutableSetOf<Long>()
     for ((frameNumber, heldData) in waitingPacketData.groupBy { it.frameNumber }) {
       if (
@@ -69,8 +57,10 @@ data class Server(val clients: List<Client>) {
             client.serverData.lagLeeway += leewayChange
             if (client.serverData.lagLeeway < Duration.ZERO) {
               // Lag leeway fell below zero. We caused lag!
-              client.serverData.totalDrift += leewayChange
+              client.serverData.totalDrift += client.serverData.lagLeeway
               client.serverData.lagLeeway = Duration.ZERO
+            } else if (client.serverData.lagLeeway > singleFrameDuration) {
+              client.serverData.lagLeeway = singleFrameDuration
             }
           }
           diagramBuilder.registerServerWait(
@@ -86,14 +76,7 @@ data class Server(val clients: List<Client>) {
           )
         }
         if (lastFanOutTime != null) {
-          // Calculate lag. (V2 leeway)
-          val gameLeewayChange = singleFrameDuration - (now - lastFanOutTime!!)
-          gameLagLeeway += gameLeewayChange
-          if (gameLagLeeway < Duration.ZERO) {
-            //           Lag leeway fell below zero. We caused lag!
-            gameDrift += gameLeewayChange
-            gameLagLeeway = Duration.ZERO
-          }
+          gameDrift += singleFrameDuration - (now - lastFanOutTime!!)
         }
 
         lastFanOutTime = now
@@ -110,15 +93,26 @@ data class Server(val clients: List<Client>) {
   }
 
   fun lagstat() {
+    log("laggy: $gameIsLaggy")
     log(
       "Lagstat:\n" +
-        clients.joinToString(separator = "\n") { "${it.id} - Drift: ${it.serverData.totalDrift}" }
+        clients.joinToString(separator = "\n") {
+          "${it.id} - Drift: ${it.serverData.totalDrift.toString(DurationUnit.MILLISECONDS)}"
+        }
+    )
+    log("Overall game drift: $gameDrift")
+    log(
+      "Sum of client lags: " +
+        clients.sumOf { it.serverData.totalDrift.toMillisDouble() }.milliseconds
     )
     log(
       "Client-perceived lag:\n" +
         clients.joinToString(separator = "\n") { "${it.id} - ${it.clientPerceivedLag}" }
     )
   }
+
+  val gameIsLaggy: Boolean
+    get() = gameDrift.absoluteValue > (singleFrameDuration * 30) * (now / 1.minutes)
 
   private fun log(s: String, debug: Boolean = false) {
     logWithTime("Server: $s", debug)

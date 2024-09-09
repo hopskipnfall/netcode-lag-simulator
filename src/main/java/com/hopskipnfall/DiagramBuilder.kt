@@ -16,7 +16,8 @@ private fun Long.str() = this.toString()
 
 private fun Double.str() = this.roundToInt().toString()
 
-class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5) {
+class DiagramBuilder(private val heightPx: Int = 450, private val framesToDraw: Int = 5) {
+  private val clientsDoneTracking = mutableSetOf<Int>()
 
   private val leftMargin: Int =
     ((singleFrameDuration * 1.5).toMillisDouble() * PIXELS_PER_MILLISECOND).roundToInt()
@@ -28,6 +29,8 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
     (leftMargin + time.toMillisDouble() * PIXELS_PER_MILLISECOND).roundToInt()
 
   fun registerPacketToServer(now: Duration, client: Int, delayedPacket: DelayedPacket) {
+    if (client in clientsDoneTracking) return
+
     val x = timeToX(delayedPacket.arrivalTime)
     maxX = max(x, maxX)
     svgActions.add {
@@ -38,13 +41,14 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
         y2 = (heightPx / 2.0).str()
 
         cssClass =
-          RAINBOW_COLORS[
-            (delayedPacket.frameData.single().frameNumber % RAINBOW_COLORS.size.toLong()).toInt()]
+          COLORS[(delayedPacket.frameData.single().frameNumber % COLORS.size.toLong()).toInt()]
       }
     }
   }
 
   fun registerPacketToClient(now: Duration, client: Int, delayedPacket: DelayedPacket) {
+    if (client in clientsDoneTracking) return
+
     val x = timeToX(delayedPacket.arrivalTime)
     maxX = max(x, maxX)
     svgActions.add {
@@ -55,8 +59,7 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
         y2 = yCoordOfClientId(client).str()
 
         cssClass =
-          RAINBOW_COLORS[
-            (delayedPacket.frameData.first().frameNumber % RAINBOW_COLORS.size.toLong()).toInt()]
+          COLORS[(delayedPacket.frameData.first().frameNumber % COLORS.size.toLong()).toInt()]
       }
     }
   }
@@ -70,6 +73,8 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
   }
 
   fun registerNewFrame(now: Duration, client: Int, frameNumber: Long) {
+    if (client in clientsDoneTracking) return
+
     svgActions.add {
       line {
         x1 = timeToX(now).str()
@@ -77,7 +82,7 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
         y1 = (yCoordOfClientId(client) - 20).str()
         y2 = (yCoordOfClientId(client) + 20).str()
 
-        cssClass = RAINBOW_COLORS[(frameNumber % RAINBOW_COLORS.size.toLong()).toInt()]
+        cssClass = COLORS[(frameNumber % COLORS.size.toLong()).toInt()]
       }
 
       text {
@@ -95,9 +100,12 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
         fontSize = "40px"
       }
     }
+    if (frameNumber >= framesToDraw) clientsDoneTracking.add(client)
   }
 
   fun registerServerWait(start: Duration, client: Int, end: Duration, frameNumber: Long) {
+    if (client in clientsDoneTracking) return
+
     svgActions.add {
       line {
         x1 = timeToX(start).str()
@@ -105,13 +113,24 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
         y1 = (heightPx / 2.0).toInt().str()
         y2 = (heightPx / 2.0).toInt().str()
 
-        cssClass = RAINBOW_COLORS[(frameNumber % RAINBOW_COLORS.size.toLong()).toInt()]
+        cssClass = COLORS[(frameNumber % COLORS.size.toLong()).toInt()]
       }
     }
   }
 
-  fun registerClientWaitForFrame(start: Duration, client: Int, end: Duration) {
-    TODO()
+  fun registerClientWaitForFrame(start: Duration, client: Int, end: Duration, frameNumber: Long) {
+    if (client in clientsDoneTracking) return
+
+    svgActions.add {
+      line {
+        x1 = timeToX(start).str()
+        x2 = timeToX(end).str()
+        y1 = yCoordOfClientId(client).str()
+        y2 = yCoordOfClientId(client).str()
+
+        cssClass = COLORS[(frameNumber % COLORS.size.toLong()).toInt()]
+      }
+    }
   }
 
   fun draw() {
@@ -191,7 +210,6 @@ class DiagramBuilder(private val heightPx: Int = 1000, val framesToDraw: Int = 5
     const val INITIAL_FRAME_WIDTH_PX = 150
     const val PIXELS_PER_MILLISECOND = INITIAL_FRAME_WIDTH_PX / (1_000.0 / 60.0)
 
-    val RAINBOW_COLORS =
-      arrayOf("red", "orange", "yellow", "green", "blue", "indigo", "violet").map { "$it-stroke" }
+    val COLORS = arrayOf("red", "green", "blue").map { "$it-stroke" }
   }
 }

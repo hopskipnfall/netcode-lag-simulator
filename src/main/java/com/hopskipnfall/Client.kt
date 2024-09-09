@@ -2,7 +2,6 @@ package com.hopskipnfall
 
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -31,7 +30,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
   fun run() {
     // This block ensures that all of the clients are synchronized with respect to the server.
     // Different frame differences require different respective start times.
-    val minFrameDelay = min(frameDelay, siblings.minOf { it.frameDelay })
+    val minFrameDelay = min(frameDelay, siblings.minOfOrNull { it.frameDelay } ?: frameDelay)
     val waitForFrames: Double = max((frameDelay - minFrameDelay).toDouble(), 0.0) / 2.0
     if (now < singleFrameDuration * waitForFrames) {
       return
@@ -69,7 +68,7 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
             arrivedPackets.size == 1
           ) // THIS MIGHT NOT ACTUALLY BE IMPOSSIBLE FOR IT TO BE GREATER THAN 1
           frameDataRequirementSatisfied = true
-          timeReceivedDataNecessaryForNextFrame = now
+          timeReceivedDataNecessaryForNextFrame = arrivedPackets.single().arrivalTime
           log("Received packet: ${arrivedPackets.single()}.", debug = true)
         }
       } else {
@@ -79,21 +78,21 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
       if (frameDataRequirementSatisfied) {
         log("moving to next frame", debug = true)
         frameNumber++
+        if (now > timeReceivedDataNecessaryForNextFrame!!) {
+          diagramBuilder.registerClientWaitForFrame(
+            start = timeReceivedDataNecessaryForNextFrame!!,
+            end = now,
+            client = id,
+            frameNumber = frameNumber
+          )
+        }
         diagramBuilder.registerNewFrame(now, client = id, frameNumber)
         if (timeReceivedDataNecessaryForNextFrame != null) {
           objectiveLagLogger.addRow(
             now,
             "Frame Number" to frameNumber,
             "Client" to "Client $id",
-            "Lag" to
-              max(
-                  ((now - newFrameTimestamp) -
-                      (now - timeReceivedDataNecessaryForNextFrame!!) -
-                      singleFrameDuration)
-                    .toMillisDouble(),
-                  0.0
-                )
-                .roundToInt()
+            "Lag" to max((now - newFrameTimestamp - singleFrameDuration).toMillisDouble(), 0.0)
           )
         }
 

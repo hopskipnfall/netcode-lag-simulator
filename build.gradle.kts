@@ -10,12 +10,14 @@ repositories {
   mavenCentral()
 
   maven("https://jitpack.io")
+  maven("https://packages.jetbrains.team/maven/p/kds/kotlin-ds-maven")
 }
 
 dependencies {
   api("org.jetbrains.kotlin:kotlin-stdlib:2.0.20")
 
   implementation("org.jetbrains.kotlinx:kandy-lets-plot:0.7.0")
+  implementation("org.jetbrains.kotlinx:kotlin-statistics-jvm:0.3.0")
 
   implementation("com.github.nwillc.ksvg:ksvg:master-SNAPSHOT")
 }

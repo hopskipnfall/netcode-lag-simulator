@@ -1,9 +1,11 @@
 package com.hopskipnfall
 
 import java.io.File
+import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.microseconds
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.kotlinx.kandy.dsl.plot
@@ -27,12 +29,14 @@ val objectiveLagLogger = TimeBasedDataLogger({ it.toMillisDouble() })
 val WIFI = LognormalDistribution(mean = 10.424.milliseconds, stdev = 8.193.milliseconds)
 val WIRED = LognormalDistribution(mean = 6.731.milliseconds, stdev = 1.920.milliseconds)
 
+// Use a fixed seed.
+val random = Random(42L)
+
 fun main() {
   val clients =
     listOf(
-      Client(id = 0, frameDelay = 1, WIFI.copy(stdev = 15.milliseconds)),
+      Client(id = 0, frameDelay = 1, WIFI),
       Client(id = 1, frameDelay = 1, WIFI),
-      Client(id = 2, frameDelay = 1, WIRED),
     )
   val server = Server(clients)
   for (client in clients) {
@@ -40,7 +44,7 @@ fun main() {
     client.siblings = clients.filter { it.id != client.id }
   }
 
-  while (now <= 10000.milliseconds) {
+  while (now <= 1.minutes) {
     server.run()
     for (it in clients) it.run()
 
@@ -57,17 +61,17 @@ fun main() {
     println("Not drawing diagram, too many clients.")
   }
 
-  val frameNumberPlot =
-    frameNumberLogger.buildDataFrame().plot {
-      line {
-        x("Timstamp (ms)")
-        y("Frame Number")
-
-        color("Client")
-      }
-    }
-  frameNumberPlot.save("frameNumberPlot.png")
-  File("lets-plot-images/frameNumberPlot.html").writeText(frameNumberPlot.toHTML())
+  //  val frameNumberPlot =
+  //    frameNumberLogger.buildDataFrame().plot {
+  //      line {
+  //        x("Timstamp (ms)")
+  //        y("Frame Number")
+  //
+  //        color("Client")
+  //      }
+  //    }
+  //  frameNumberPlot.save("frameNumberPlot.png")
+  //  File("lets-plot-images/frameNumberPlot.html").writeText(frameNumberPlot.toHTML())
 
   val frameDriftPlot =
     frameDriftLogger.buildDataFrame().plot {

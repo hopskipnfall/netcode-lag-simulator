@@ -15,6 +15,7 @@ build/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+.idea/uiDesigner.xml
 
 ### Eclipse ###
 .apt_generated
@@ -44,4 +45,3 @@ bin/
 lets-plot-images/
 
 *.svg
-.idea/uiDesigner.xml

@@ -1,7 +1,6 @@
 package com.hopskipnfall
 
 import kotlin.math.*
-import kotlin.random.Random
 import kotlin.random.asJavaRandom
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -9,7 +8,7 @@ import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.DurationUnit
 
 interface Distribution {
-  fun random(random: Random = Random.Default): Duration
+  fun random(): Duration
 }
 
 fun Duration.toMillisDouble(): Double =
@@ -17,7 +16,7 @@ fun Duration.toMillisDouble(): Double =
 
 data class LognormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
 
-  override fun random(random: Random): Duration {
+  override fun random(): Duration {
     val mean = mean.toMillisDouble()
     val stdev = stdev.toMillisDouble()
 
@@ -40,7 +39,7 @@ data class LognormalDistribution(val mean: Duration, val stdev: Duration) : Dist
 }
 
 data class NormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
-  override fun random(random: Random): Duration =
+  override fun random(): Duration =
     maxOf(
       random
         .asJavaRandom()
@@ -48,12 +47,10 @@ data class NormalDistribution(val mean: Duration, val stdev: Duration) : Distrib
         .milliseconds,
       Duration.ZERO
     )
-
-  fun toLogNormal(): LognormalDistribution = LognormalDistribution(mean, stdev)
 }
 
 data class EqualDistribution(val range: ClosedRange<Duration>) : Distribution {
-  override fun random(random: Random): Duration =
+  override fun random(): Duration =
     if (range.start == range.endInclusive) {
       range.start
     } else {
