@@ -11,6 +11,7 @@ import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.kotlinx.kandy.dsl.plot
 import org.jetbrains.kotlinx.kandy.letsplot.export.save
 import org.jetbrains.kotlinx.kandy.letsplot.export.toHTML
+import org.jetbrains.kotlinx.kandy.letsplot.feature.layout
 import org.jetbrains.kotlinx.kandy.letsplot.layers.line
 import org.jetbrains.kotlinx.kandy.letsplot.layers.points
 
@@ -21,9 +22,9 @@ var now = 0.nanoseconds
 val timeStep = 10.microseconds
 val singleFrameDuration = 1.seconds / 60
 
-val frameNumberLogger = TimeBasedDataLogger({ it.toMillisDouble() })
-val frameDriftLogger = TimeBasedDataLogger({ it.toMillisDouble() })
-val objectiveLagLogger = TimeBasedDataLogger({ it.toMillisDouble() })
+val frameNumberLogger = TimeBasedDataLogger({ it.toSecondsDouble() })
+val frameDriftLogger = TimeBasedDataLogger({ it.toSecondsDouble() })
+val objectiveLagLogger = TimeBasedDataLogger({ it.toSecondsDouble() })
 
 // Some actual ping measurements I took.
 val WIFI = LognormalDistribution(mean = 10.424.milliseconds, stdev = 8.193.milliseconds)
@@ -64,7 +65,7 @@ fun main() {
   //  val frameNumberPlot =
   //    frameNumberLogger.buildDataFrame().plot {
   //      line {
-  //        x("Timstamp (ms)")
+  //        x("Timstamp (seconds)")
   //        y("Frame Number")
   //
   //        color("Client")
@@ -76,7 +77,7 @@ fun main() {
   val frameDriftPlot =
     frameDriftLogger.buildDataFrame().plot {
       line {
-        x("Timstamp (ms)")
+        x("Timstamp (seconds)")
         y("Induced gameplay drift")
 
         color("Client")
@@ -88,11 +89,13 @@ fun main() {
   val lagPlot =
     objectiveLagLogger.buildDataFrame().plot {
       points {
-        x("Timstamp (ms)")
-        y("Lag")
+        x("Timstamp (seconds)")
+        y("Objective lag in a single frame (ms)")
 
         color("Client")
       }
+
+      layout { title = "Objective lag experienced by clients" }
     }
   lagPlot.save("lag.png")
   File("lets-plot-images/lag.html").writeText(lagPlot.toHTML())

@@ -5,10 +5,15 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
-private var gameDrift = Duration.ZERO
-
 data class Server(val clients: List<Client>) {
   private val clientIds: Set<Int> = clients.map { it.id }.toSet()
+
+  /** Data the server tracks about the client. */
+  private val gameData =
+    object {
+      var lagLeeway: Duration = singleFrameDuration
+      var totalDrift: Duration = Duration.ZERO
+    }
 
   /** A holding place for packets that are "in the air." */
   val incomingPackets = mutableListOf<DelayedPacket>()
@@ -63,20 +68,26 @@ data class Server(val clients: List<Client>) {
               client.serverData.lagLeeway = singleFrameDuration
             }
           }
-          diagramBuilder.registerServerWait(
-            client.serverData.receivedDataAt,
-            client = client.id,
-            now,
-            frameNumber = packet.frameData.first().frameNumber,
-          )
           frameDriftLogger.addRow(
             now,
             "Client" to "Client ${client.id}",
             "Induced gameplay drift" to client.serverData.totalDrift.toMillisDouble(),
           )
+          diagramBuilder.registerServerWait(
+            client.serverData.receivedDataAt,
+            now,
+            frameNumber = packet.frameData.first().frameNumber,
+          )
         }
         if (lastFanOutTime != null) {
-          gameDrift += singleFrameDuration - (now - lastFanOutTime!!)
+          gameData.lagLeeway += singleFrameDuration - (now - lastFanOutTime!!)
+          if (gameData.lagLeeway < Duration.ZERO) {
+            // Lag leeway fell below zero. The game experienced lag!
+            gameData.totalDrift += gameData.lagLeeway
+            gameData.lagLeeway = Duration.ZERO
+          } else if (gameData.lagLeeway > singleFrameDuration) {
+            gameData.lagLeeway = singleFrameDuration
+          }
         }
 
         lastFanOutTime = now
@@ -84,8 +95,8 @@ data class Server(val clients: List<Client>) {
 
         frameDriftLogger.addRow(
           now,
-          "Client" to "Overall",
-          "Induced gameplay drift" to gameDrift.toMillisDouble(),
+          "Client" to "Game (inferred)",
+          "Induced gameplay drift" to gameData.totalDrift.toMillisDouble(),
         )
       }
     }
@@ -100,7 +111,7 @@ data class Server(val clients: List<Client>) {
           "${it.id} - Drift: ${it.serverData.totalDrift.toString(DurationUnit.MILLISECONDS)}"
         }
     )
-    log("Overall game drift: $gameDrift")
+    log("Overall game drift: ${gameData.totalDrift}")
     log(
       "Sum of client lags: " +
         clients.sumOf { it.serverData.totalDrift.toMillisDouble() }.milliseconds
@@ -112,7 +123,7 @@ data class Server(val clients: List<Client>) {
   }
 
   val gameIsLaggy: Boolean
-    get() = gameDrift.absoluteValue > (singleFrameDuration * 30) * (now / 1.minutes)
+    get() = gameData.totalDrift.absoluteValue > (singleFrameDuration * 30) * (now / 1.minutes)
 
   private fun log(s: String, debug: Boolean = false) {
     logWithTime("Server: $s", debug)

@@ -5,6 +5,7 @@ import kotlin.random.asJavaRandom
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
 interface Distribution {
@@ -13,6 +14,9 @@ interface Distribution {
 
 fun Duration.toMillisDouble(): Double =
   this.inWholeNanoseconds / 1.milliseconds.inWholeNanoseconds.toDouble()
+
+fun Duration.toSecondsDouble(): Double =
+  this.inWholeNanoseconds / 1.seconds.inWholeNanoseconds.toDouble()
 
 data class LognormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
 

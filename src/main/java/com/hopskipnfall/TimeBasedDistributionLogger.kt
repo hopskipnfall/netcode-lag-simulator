@@ -5,7 +5,7 @@ import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
 
 class TimeBasedDataLogger(
   private val timestampTransformer: (Duration) -> Double,
-  private val timeName: String = "Timstamp (ms)",
+  private val timeName: String = "Timstamp (seconds)",
 ) {
   private val times = mutableListOf<Double>()
   private val data = mutableMapOf<String, MutableList<Any>>()

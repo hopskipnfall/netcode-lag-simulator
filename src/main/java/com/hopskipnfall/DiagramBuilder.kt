@@ -103,8 +103,8 @@ class DiagramBuilder(private val heightPx: Int = 450, private val framesToDraw: 
     if (frameNumber >= framesToDraw) clientsDoneTracking.add(client)
   }
 
-  fun registerServerWait(start: Duration, client: Int, end: Duration, frameNumber: Long) {
-    if (client in clientsDoneTracking) return
+  fun registerServerWait(start: Duration, end: Duration, frameNumber: Long) {
+    if (clientsDoneTracking.size == 2) return
 
     svgActions.add {
       line {

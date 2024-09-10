@@ -5,7 +5,12 @@ import kotlin.math.min
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
+class Client(
+  val id: Int,
+  val frameDelay: Int,
+  val pingRange: Distribution,
+  val description: String? = null,
+) {
   lateinit var server: Server
   lateinit var siblings: List<Client>
 
@@ -78,7 +83,10 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
       if (frameDataRequirementSatisfied) {
         log("moving to next frame", debug = true)
         frameNumber++
-        if (now > timeReceivedDataNecessaryForNextFrame!!) {
+        if (
+          timeReceivedDataNecessaryForNextFrame != null &&
+            now > timeReceivedDataNecessaryForNextFrame!!
+        ) {
           diagramBuilder.registerClientWaitForFrame(
             start = timeReceivedDataNecessaryForNextFrame!!,
             end = now,
@@ -91,8 +99,9 @@ class Client(val id: Int, val frameDelay: Int, val pingRange: Distribution) {
           objectiveLagLogger.addRow(
             now,
             "Frame Number" to frameNumber,
-            "Client" to "Client $id",
-            "Lag" to max((now - newFrameTimestamp - singleFrameDuration).toMillisDouble(), 0.0)
+            "Client" to "Client $id" + if (description == null) "" else " ($description)",
+            "Objective lag in a single frame (ms)" to
+              max((now - newFrameTimestamp - singleFrameDuration).toMillisDouble(), 0.0)
           )
         }
 
