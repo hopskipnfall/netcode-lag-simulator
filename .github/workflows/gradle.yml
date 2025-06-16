@@ -33,3 +33,5 @@ jobs:
       uses: "gradle/gradle-build-action@v2"
       with:
         arguments: "spotlessCheck"
+    - name: "Ensure notebook outputs are cleaned"
+      uses: ResearchSoftwareActions/EnsureCleanNotebooksAction@1.1
