@@ -1,14 +1,16 @@
 # netcode-lag-simulator
 
-All of the code is [here](src/main/java/com/hopskipnfall).
+Open the Kotlin Jupyter notebook [Notebook.ipynb](Notebook.ipynb)
 
-To run the code, run:
+Before committing changes, make sure to clean the notebook outputs using the command 
 
-```sh
-./gradlew run
+```shell
+jupyter nbconvert --clear-output --inplace *.ipynb
 ```
 
-To format the code run:
+or by using the "clean" button in Intellij IDEA.
+
+When making changes to the code, use the formatter with:
 
 ```sh
 ./gradlew spotlessApply

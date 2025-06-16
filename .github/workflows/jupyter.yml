@@ -1,0 +1,17 @@
+---
+name: "Jupyter notebook"
+"on":
+  push:
+    paths:
+    - "**.ipynb"
+  pull_request:
+    paths:
+    - "**.ipynb"
+jobs:
+  lint-notebooks:
+    runs-on: "ubuntu-latest"
+    steps:
+    - name: "Check out code"
+      uses: "actions/checkout@v2"
+    - name: "Ensure Clean Jupyter Notebooks"
+      uses: "ResearchSoftwareActions/EnsureCleanNotebooksAction@1.1"
