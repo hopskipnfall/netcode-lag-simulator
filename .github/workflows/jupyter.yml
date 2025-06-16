@@ -2,16 +2,16 @@
 name: "Jupyter notebook"
 "on":
   push:
-    branches:
-    - "master"
+    paths:
+    - "**.ipynb"
   pull_request:
-    branches:
-    - "master"
-permissions:
-  contents: "read"
+    paths:
+    - "**.ipynb"
 jobs:
-  build:
+  lint-notebooks:
     runs-on: "ubuntu-latest"
     steps:
-    - name: "Ensure notebook outputs are cleaned"
+    - name: "Check out code"
+      uses: "actions/checkout@v2"
+    - name: "Ensure Clean Jupyter Notebooks"
       uses: "ResearchSoftwareActions/EnsureCleanNotebooksAction@1.1"
