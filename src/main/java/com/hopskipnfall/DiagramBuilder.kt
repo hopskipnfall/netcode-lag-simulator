@@ -1,13 +1,9 @@
 package com.hopskipnfall
 
-import com.github.nwillc.ksvg.RenderMode
 import com.github.nwillc.ksvg.elements.SVG
-import java.io.FileWriter
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.time.Duration
-
-val diagramBuilder = DiagramBuilder()
 
 // These helper functions prepare the number for SVG.
 private fun Int.str() = this.toString()
@@ -20,7 +16,7 @@ class DiagramBuilder(private val heightPx: Int = 450, private val framesToDraw: 
   private val clientsDoneTracking = mutableSetOf<Int>()
 
   private val leftMargin: Int =
-    ((singleFrameDuration * 1.5).toMillisDouble() * PIXELS_PER_MILLISECOND).roundToInt()
+    ((SINGLE_FRAME_DURATION * 1.5).toMillisDouble() * PIXELS_PER_MILLISECOND).roundToInt()
   private val svgActions = mutableListOf<SVG.() -> Unit>()
 
   private var maxX = 0
@@ -133,7 +129,7 @@ class DiagramBuilder(private val heightPx: Int = 450, private val framesToDraw: 
     }
   }
 
-  fun draw() {
+  fun draw(): SVG {
     val svg =
       SVG.svg(true) {
         style {
@@ -202,8 +198,7 @@ class DiagramBuilder(private val heightPx: Int = 450, private val framesToDraw: 
 
         for (it in svgActions) it()
       }
-
-    FileWriter("diagram.svg").use { svg.render(it, RenderMode.FILE) }
+    return svg
   }
 
   private companion object {
