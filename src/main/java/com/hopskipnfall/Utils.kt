@@ -1,12 +1,15 @@
 package com.hopskipnfall
 
 import kotlin.math.*
+import kotlin.random.Random
 import kotlin.random.asJavaRandom
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
+
+val LOG_DEBUG = false
 
 interface Distribution {
   fun random(): Duration
@@ -18,7 +21,11 @@ fun Duration.toMillisDouble(): Double =
 fun Duration.toSecondsDouble(): Double =
   this.inWholeNanoseconds / 1.seconds.inWholeNanoseconds.toDouble()
 
-data class LognormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
+data class LognormalDistribution(
+  val mean: Duration,
+  val stdev: Duration,
+  private val random: Random
+) : Distribution {
 
   override fun random(): Duration {
     val mean = mean.toMillisDouble()
@@ -42,7 +49,8 @@ data class LognormalDistribution(val mean: Duration, val stdev: Duration) : Dist
   }
 }
 
-data class NormalDistribution(val mean: Duration, val stdev: Duration) : Distribution {
+data class NormalDistribution(val mean: Duration, val stdev: Duration, private val random: Random) :
+  Distribution {
   override fun random(): Duration =
     maxOf(
       random
@@ -53,7 +61,8 @@ data class NormalDistribution(val mean: Duration, val stdev: Duration) : Distrib
     )
 }
 
-data class EqualDistribution(val range: ClosedRange<Duration>) : Distribution {
+data class EqualDistribution(val range: ClosedRange<Duration>, private val random: Random) :
+  Distribution {
   override fun random(): Duration =
     if (range.start == range.endInclusive) {
       range.start
@@ -64,7 +73,7 @@ data class EqualDistribution(val range: ClosedRange<Duration>) : Distribution {
     }
 }
 
-fun logWithTime(s: String, debug: Boolean = false) {
+fun logWithTime(s: String, debug: Boolean = false, now: Duration) {
   if (debug && !LOG_DEBUG) return
   println("${now.toString(DurationUnit.MILLISECONDS, decimals = 0)} $s")
 }
@@ -82,3 +91,5 @@ fun <T> MutableList<T>.findAndRemoveAll(predicate: (T) -> Boolean): List<T> {
 
 operator fun ClosedRange<Duration>.div(int: Int): ClosedRange<Duration> =
   (this.start / int)..(this.endInclusive / int)
+
+val SINGLE_FRAME_DURATION = 1.seconds / 60
