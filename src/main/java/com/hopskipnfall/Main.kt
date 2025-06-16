@@ -33,6 +33,79 @@ val WIRED = LognormalDistribution(mean = 6.731.milliseconds, stdev = 1.920.milli
 // Use a fixed seed.
 val random = Random(42L)
 
+fun getGameDriftForConfiguration(clients: List<Client>): Server {
+  now = Duration.ZERO
+
+  val server = Server(clients)
+  for (client in clients) {
+    client.server = server
+    client.siblings = clients.filter { it.id != client.id }
+  }
+
+  while (now <= 1.minutes) {
+    server.run()
+    for (it in clients) it.run()
+
+    now += timeStep
+  }
+  check(clients.all { it.isHealthy }) {
+    "One or more clients is unhealthy! A deadlock likely occurred."
+  }
+  server.lagstat()
+
+  return server
+}
+
+fun testRecommendations() {
+  val clients =
+    listOf(
+      Client(id = 0, frameDelay = 1, WIFI),
+      Client(id = 1, frameDelay = 1, WIFI),
+    )
+
+  val completedServer = getGameDriftForConfiguration(clients)
+
+  val originalDrift = completedServer.gameDrift
+  val recommendations = completedServer.recommendHigherFrameDelay()
+
+  val newCompletedServer =
+    getGameDriftForConfiguration(
+      clients.map {
+        Client(
+          id = it.id,
+          frameDelay = it.frameDelay + if (it.id in recommendations) 1 else 0,
+          it.pingRange
+        )
+      }
+    )
+
+  val frameDriftPlot =
+    frameDriftLogger.buildDataFrame().plot {
+      line {
+        x("Timstamp (seconds)")
+        y("Induced gameplay drift")
+
+        color("Client")
+      }
+    }
+  frameDriftPlot.save("frameDriftPlot.png")
+  File("lets-plot-images/frameDriftPlot.html").writeText(frameDriftPlot.toHTML())
+
+  val lagPlot =
+    objectiveLagLogger.buildDataFrame().plot {
+      points {
+        x("Timstamp (seconds)")
+        y("Objective lag in a single frame (ms)")
+
+        color("Client")
+      }
+
+      layout { title = "Objective lag experienced by clients" }
+    }
+  lagPlot.save("lag.png")
+  File("lets-plot-images/lag.html").writeText(lagPlot.toHTML())
+}
+
 fun main() {
   val clients =
     listOf(
@@ -57,7 +130,7 @@ fun main() {
   server.lagstat()
 
   if (clients.size < 3) {
-    diagramBuilder.draw()
+    //    diagramBuilder.draw()
   } else {
     println("Not drawing diagram, too many clients.")
   }

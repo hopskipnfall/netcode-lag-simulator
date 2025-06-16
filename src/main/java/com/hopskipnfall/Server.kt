@@ -120,12 +120,27 @@ data class Server(val clients: List<Client>) {
       "Client-perceived lag:\n" +
         clients.joinToString(separator = "\n") { "${it.id} - ${it.clientPerceivedLag}" }
     )
+    log("These clients should move to higher frame delays: " + recommendHigherFrameDelay())
   }
 
   val gameIsLaggy: Boolean
-    get() = gameData.totalDrift.absoluteValue > (singleFrameDuration * 30) * (now / 1.minutes)
+    get() = gameData.totalDrift.absoluteValue > (singleFrameDuration * 20) * (now / 1.minutes)
+
+  fun recommendHigherFrameDelay(): List<Int> {
+    if (!gameIsLaggy) return emptyList()
+
+    val highestDriftOfClient = clients.maxOf { it.serverData.totalDrift.absoluteValue }
+    if (highestDriftOfClient == Duration.ZERO) return clients.map { it.id }
+    return clients
+      .filter { it.serverData.totalDrift.absoluteValue > highestDriftOfClient * 0.8 }
+      .sortedByDescending { it.serverData.totalDrift.absoluteValue }
+      .map { it.id }
+  }
 
   private fun log(s: String, debug: Boolean = false) {
     logWithTime("Server: $s", debug)
   }
+
+  val gameDrift: Duration
+    get() = gameData.totalDrift
 }
