@@ -1,4 +1,3 @@
-import build.buf.gradle.BUF_BINARY_CONFIGURATION_NAME
 import com.google.protobuf.gradle.id
 
 plugins {
@@ -74,13 +73,15 @@ tasks.named("bufLint") { enabled = false }
 
 // Formatting/linting.
 spotless {
-  protobuf {
-    buf("1.46.0")
-      .pathToExe(
-        configurations.getByName(BUF_BINARY_CONFIGURATION_NAME).getSingleFile().getAbsolutePath()
-      )
-    target("src/**/*.proto")
-  }
+  // Breaks github CI even though it works locally..
+  //  protobuf {
+  //    buf("1.46.0")
+  //      .pathToExe(
+  //
+  // configurations.getByName(BUF_BINARY_CONFIGURATION_NAME).getSingleFile().getAbsolutePath()
+  //      )
+  //    target("src/**/*.proto")
+  //  }
 
   kotlin {
     target("**/*.kt", "**/*.kts")
