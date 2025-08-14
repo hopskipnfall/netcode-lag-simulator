@@ -1,4 +1,9 @@
+import build.buf.gradle.BUF_BINARY_CONFIGURATION_NAME
+import com.google.protobuf.gradle.id
+
 plugins {
+  id("com.google.protobuf") version "0.9.5"
+  id("build.buf") version "0.10.2"
   id("com.diffplug.spotless") version "6.25.0"
   application
 
@@ -20,6 +25,10 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlin-statistics-jvm:0.3.0")
 
   implementation("com.github.nwillc.ksvg:ksvg:master-SNAPSHOT")
+
+  implementation("com.google.protobuf:protobuf-kotlin:4.31.1")
+  implementation("com.google.protobuf:protobuf-java:4.31.1")
+  implementation("com.google.protobuf:protobuf-java-util:4.31.1")
 }
 
 group = "com.hopskipnfall"
@@ -30,10 +39,22 @@ version = "0.12.0"
 
 kotlin { jvmToolchain(17) }
 
-sourceSets {
-  main { kotlin.srcDir("src/main/java") }
+tasks.processResources {
+  // Fails to compile without this.
+  // https://github.com/google/protobuf-gradle-plugin/issues/522#issuecomment-1195266995
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
 
-  test { kotlin.srcDir("src/test/java") }
+sourceSets {
+  main {
+    proto.srcDir("src/main/proto")
+    kotlin.srcDir("src/main/java")
+  }
+
+  test {
+    proto.srcDir("src/main/proto")
+    kotlin.srcDir("src/test/java")
+  }
 }
 
 tasks.withType<Test> {
@@ -46,8 +67,21 @@ tasks.withType<Test> {
   )
 }
 
+// Disable formatting via buf plugin directly. We just need it for the binary.
+buf { enforceFormat = false }
+
+tasks.named("bufLint") { enabled = false }
+
 // Formatting/linting.
 spotless {
+  protobuf {
+    buf("1.46.0")
+      .pathToExe(
+        configurations.getByName(BUF_BINARY_CONFIGURATION_NAME).getSingleFile().getAbsolutePath()
+      )
+    target("src/**/*.proto")
+  }
+
   kotlin {
     target("**/*.kt", "**/*.kts")
     targetExclude("build/", ".git/", ".idea/", ".mvn", "src/main/java-templates/")
@@ -60,5 +94,20 @@ spotless {
     jackson()
   }
 }
+
+protobuf {
+  protoc { artifact = "com.google.protobuf:protoc:4.31.1" }
+
+  generateProtoTasks {
+    ofSourceSet("main").forEach {
+      it.plugins {
+        // Generates Kotlin DSL builders.
+        id("kotlin") {}
+      }
+    }
+  }
+}
+
+tasks.named("compileKotlin") { dependsOn(":generateProto") }
 
 application { mainClass.set("com.hopskipnfall.MainKt") }
