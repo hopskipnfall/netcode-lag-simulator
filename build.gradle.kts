@@ -3,10 +3,10 @@ import com.google.protobuf.gradle.id
 plugins {
   id("com.google.protobuf") version "0.9.5"
   id("build.buf") version "0.10.2"
-  id("com.diffplug.spotless") version "6.25.0"
+  id("com.diffplug.spotless") version "7.2.1"
   application
 
-  kotlin("jvm") version "2.0.20"
+  kotlin("jvm") version "2.2.10"
 }
 
 repositories {
@@ -18,10 +18,10 @@ repositories {
 }
 
 dependencies {
-  api("org.jetbrains.kotlin:kotlin-stdlib:2.0.20")
+  api("org.jetbrains.kotlin:kotlin-stdlib:2.2.10")
 
-  implementation("org.jetbrains.kotlinx:kandy-lets-plot:0.7.0")
-  implementation("org.jetbrains.kotlinx:kotlin-statistics-jvm:0.3.0")
+  implementation("org.jetbrains.kotlinx:kandy-lets-plot:0.8.0")
+  implementation("org.jetbrains.kotlinx:dataframe:1.0.0-Beta2")
 
   implementation("com.github.nwillc.ksvg:ksvg:master-SNAPSHOT")
 
@@ -62,30 +62,17 @@ tasks.withType<Test> {
 
   systemProperty(
     "flogger.backend_factory",
-    "org.emulinker.testing.TestLoggingBackendFactory#getInstance"
+    "org.emulinker.testing.TestLoggingBackendFactory#getInstance",
   )
 }
 
-// Disable formatting via buf plugin directly. We just need it for the binary.
-buf { enforceFormat = false }
-
-tasks.named("bufLint") { enabled = false }
+buf { enforceFormat = true }
 
 // Formatting/linting.
 spotless {
-  // Breaks github CI even though it works locally..
-  //  protobuf {
-  //    buf("1.46.0")
-  //      .pathToExe(
-  //
-  // configurations.getByName(BUF_BINARY_CONFIGURATION_NAME).getSingleFile().getAbsolutePath()
-  //      )
-  //    target("src/**/*.proto")
-  //  }
-
   kotlin {
     target("**/*.kt", "**/*.kts")
-    targetExclude("build/", ".git/", ".idea/", ".mvn", "src/main/java-templates/")
+    targetExclude("bin/", "build/", ".git/", ".idea/", ".mvn", "src/main/java-templates/")
     ktfmt().googleStyle()
   }
 
@@ -104,6 +91,7 @@ protobuf {
       it.plugins {
         // Generates Kotlin DSL builders.
         id("kotlin") {}
+        id("python") {}
       }
     }
   }

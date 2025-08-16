@@ -37,7 +37,7 @@ class Client(
     frameNumberLogger: TimeBasedDataLogger,
     diagramBuilder: DiagramBuilder,
     objectiveLagLogger: TimeBasedDataLogger,
-    timeStep: Duration
+    timeStep: Duration,
   ) {
     // This block ensures that all of the clients are synchronized with respect to the server.
     // Different frame differences require different respective start times.
@@ -97,7 +97,7 @@ class Client(
             start = timeReceivedDataNecessaryForNextFrame!!,
             end = now,
             client = id,
-            frameNumber = frameNumber
+            frameNumber = frameNumber,
           )
         }
         diagramBuilder.registerNewFrame(now, client = id, frameNumber)
@@ -107,7 +107,7 @@ class Client(
             "Frame Number" to frameNumber,
             "Client" to "Client $id" + if (description == null) "" else " ($description)",
             "Objective lag in a single frame (ms)" to
-              max((now - newFrameTimestamp - SINGLE_FRAME_DURATION).toMillisDouble(), 0.0)
+              max((now - newFrameTimestamp - SINGLE_FRAME_DURATION).toMillisDouble(), 0.0),
           )
         }
 
@@ -144,7 +144,7 @@ class Client(
     val packet =
       DelayedPacket(
         arrivalTime = now + (pingRange.random() / 2),
-        listOf(FrameData(frameNumber + frameDelay, fromClientId = id))
+        listOf(FrameData(frameNumber + frameDelay, fromClientId = id)),
       )
     diagramBuilder.registerPacketToServer(now, client = id, packet)
     server.incomingPackets += packet
