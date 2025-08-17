@@ -24,7 +24,7 @@ fun Duration.toSecondsDouble(): Double =
 data class LognormalDistribution(
   val mean: Duration,
   val stdev: Duration,
-  private val random: Random
+  private val random: Random,
 ) : Distribution {
 
   override fun random(): Duration {
@@ -57,7 +57,7 @@ data class NormalDistribution(val mean: Duration, val stdev: Duration, private v
         .asJavaRandom()
         .nextGaussian(/* mean= */ mean.toMillisDouble(), /* stddev= */ stdev.toMillisDouble())
         .milliseconds,
-      Duration.ZERO
+      Duration.ZERO,
     )
 }
 

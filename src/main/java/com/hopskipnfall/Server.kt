@@ -52,7 +52,6 @@ data class Server(val clients: List<Client>) {
           client.incomingPackets += packet
 
           diagramBuilder.registerPacketToClient(now, client = client.id, packet)
-
           if (lastFanOutTime != null) {
             // Calculate lag.
             val elapsedSinceReceivingFrameData = now - client.serverData.receivedDataAt
@@ -110,18 +109,18 @@ data class Server(val clients: List<Client>) {
         clients.joinToString(separator = "\n") {
           "${it.id} - Drift: ${it.serverData.totalDrift.toString(DurationUnit.MILLISECONDS)}"
         },
-      now
+      now,
     )
     log("Overall game drift: ${gameData.totalDrift}", now)
     log(
       "Sum of client lags: " +
         clients.sumOf { it.serverData.totalDrift.toMillisDouble() }.milliseconds,
-      now
+      now,
     )
     log(
       "Client-perceived lag:\n" +
         clients.joinToString(separator = "\n") { "${it.id} - ${it.clientPerceivedLag}" },
-      now
+      now,
     )
   }
 

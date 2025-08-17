@@ -33,6 +33,6 @@ class TimeBasedDataLogger(
   fun buildDataFrame() =
     dataFrameOf(
       timeName to times,
-      *(data.map { (columnName, values) -> columnName to values }.toTypedArray())
+      *(data.map { (columnName, values) -> columnName to values }.toTypedArray()),
     )
 }
